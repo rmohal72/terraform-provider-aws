@@ -42,6 +42,50 @@ func DataSourceDomain() *schema.Resource {
 					},
 				},
 			},
+			"auto_tune_options": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"desired_state": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"maintenance_schedule": {
+							Type:     schema.TypeSet,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"start_at": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+									"duration": {
+										Type:     schema.TypeList,
+										Computed: true,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"value": {
+													Type:     schema.TypeInt,
+													Computed: true,
+												},
+												"unit": {
+													Type:     schema.TypeString,
+													Computed: true,
+												},
+											},
+										},
+									},
+									"cron_expression_for_recurrence": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			"domain_name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -296,6 +340,21 @@ func dataSourceDomainRead(d *schema.ResourceData, meta interface{}) error {
 
 	ds := resp.DomainStatus
 
+	req2 := &elasticsearchservice.DescribeElasticsearchDomainConfigInput{
+		DomainName: aws.String(d.Get("domain_name").(string)),
+	}
+
+	resp2, err2 := conn.DescribeElasticsearchDomainConfig(req2)
+	if err2 != nil {
+		return fmt.Errorf("error querying elasticsearch_domain: %w", err2)
+	}
+
+	if resp2.DomainConfig == nil {
+		return fmt.Errorf("your query returned no results")
+	}
+
+	dc := resp2.DomainConfig
+
 	d.SetId(aws.StringValue(ds.ARN))
 
 	if ds.AccessPolicies != nil && aws.StringValue(ds.AccessPolicies) != "" {
@@ -317,6 +376,12 @@ func dataSourceDomainRead(d *schema.ResourceData, meta interface{}) error {
 
 	if err := d.Set("advanced_security_options", flattenAdvancedSecurityOptions(ds.AdvancedSecurityOptions)); err != nil {
 		return fmt.Errorf("error setting advanced_security_options: %w", err)
+	}
+
+	if dc.AutoTuneOptions != nil {
+		if err := d.Set("auto_tune_options", []interface{}{flattenAutoTuneOptions(dc.AutoTuneOptions.Options)}); err != nil {
+			return fmt.Errorf("error setting auto_tune_options: %w", err)
+		}
 	}
 
 	if err := d.Set("ebs_options", flattenEBSOptions(ds.EBSOptions)); err != nil {

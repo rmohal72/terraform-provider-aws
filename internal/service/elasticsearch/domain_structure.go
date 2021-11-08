@@ -1,6 +1,8 @@
 package elasticsearch
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	elasticsearch "github.com/aws/aws-sdk-go/service/elasticsearchservice"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -111,6 +113,57 @@ func flattenAdvancedSecurityOptions(advancedSecurityOptions *elasticsearch.Advan
 	}
 
 	return []map[string]interface{}{m}
+}
+
+func flattenAutoTuneOptions(autoTuneOptions *elasticsearch.AutoTuneOptions) map[string]interface{} {
+	if autoTuneOptions == nil {
+		return nil
+	}
+
+	m := map[string]interface{}{}
+
+	m["desired_state"] = aws.StringValue(autoTuneOptions.DesiredState)
+
+	if v := autoTuneOptions.MaintenanceSchedules; v != nil {
+		m["maintenance_schedule"] = flattenAutoTuneMaintenanceSchedules(v)
+	}
+
+	return m
+}
+
+func flattenAutoTuneMaintenanceSchedules(autoTuneMaintenanceSchedules []*elasticsearch.AutoTuneMaintenanceSchedule) []interface{} {
+	if len(autoTuneMaintenanceSchedules) == 0 {
+		return nil
+	}
+
+	var tfList []interface{}
+
+	for _, autoTuneMaintenanceSchedule := range autoTuneMaintenanceSchedules {
+		tfList = append(tfList, flattenAutoTuneMaintenanceSchedule(autoTuneMaintenanceSchedule))
+	}
+
+	return tfList
+}
+
+func flattenAutoTuneMaintenanceSchedule(autoTuneMaintenanceSchedule *elasticsearch.AutoTuneMaintenanceSchedule) map[string]interface{} {
+	m := map[string]interface{}{}
+
+	m["start_at"] = aws.TimeValue(autoTuneMaintenanceSchedule.StartAt).Format(time.RFC3339)
+
+	m["duration"] = []interface{}{flattenAutoTuneMaintenanceScheduleDuration(autoTuneMaintenanceSchedule.Duration)}
+
+	m["cron_expression_for_recurrence"] = aws.StringValue(autoTuneMaintenanceSchedule.CronExpressionForRecurrence)
+
+	return m
+}
+
+func flattenAutoTuneMaintenanceScheduleDuration(autoTuneMaintenanceScheduleDuration *elasticsearch.Duration) map[string]interface{} {
+	m := map[string]interface{}{}
+
+	m["value"] = aws.Int64Value(autoTuneMaintenanceScheduleDuration.Value)
+	m["unit"] = aws.StringValue(autoTuneMaintenanceScheduleDuration.Unit)
+
+	return m
 }
 
 func flattenESSAMLOptions(d *schema.ResourceData, samlOptions *elasticsearch.SAMLOptionsOutput) []interface{} {
