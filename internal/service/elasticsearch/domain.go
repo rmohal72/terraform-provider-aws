@@ -122,6 +122,60 @@ func ResourceDomain() *schema.Resource {
 					},
 				},
 			},
+			"auto_tune_options": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"desired_state": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(elasticsearch.AutoTuneDesiredState_Values(), false),
+						},
+						"maintenance_schedule": {
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"start_at": {
+										Type:         schema.TypeString,
+										Required:     true,
+										ValidateFunc: validation.IsRFC3339Time,
+									},
+									"duration": {
+										Type:     schema.TypeList,
+										Required: true,
+										MaxItems: 1,
+										Elem: &schema.Resource{
+											Schema: map[string]*schema.Schema{
+												"value": {
+													Type:     schema.TypeInt,
+													Required: true,
+												},
+												"unit": {
+													Type:         schema.TypeString,
+													Required:     true,
+													ValidateFunc: validation.StringInSlice(elasticsearch.TimeUnit_Values(), false),
+												},
+											},
+										},
+									},
+									"cron_expression_for_recurrence": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
+						"rollback_on_disable": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(elasticsearch.RollbackOnDisable_Values(), false),
+						},
+					},
+				},
+			},
 			"domain_name": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -484,6 +538,10 @@ func resourceDomainCreate(d *schema.ResourceData, meta interface{}) error {
 		input.AdvancedSecurityOptions = expandAdvancedSecurityOptions(v.([]interface{}))
 	}
 
+	if v, ok := d.GetOk("auto_tune_options"); ok && len(v.([]interface{})) > 0 {
+		input.AutoTuneOptions = expandAutoTuneOptionsInput(v.([]interface{})[0].(map[string]interface{}))
+	}
+
 	if v, ok := d.GetOk("ebs_options"); ok {
 		options := v.([]interface{})
 
@@ -639,6 +697,32 @@ func resourceDomainCreate(d *schema.ResourceData, meta interface{}) error {
 
 	log.Printf("[DEBUG] Elasticsearch domain %q created", d.Id())
 
+	log.Printf("[DEBUG] Modifying config for Elasticsearch domain %q", d.Id())
+	err = resource.Retry(60*time.Minute, func() *resource.RetryError {
+
+		in := &elasticsearch.UpdateElasticsearchDomainConfigInput{
+			DomainName: aws.String(d.Get("domain_name").(string)),
+		}
+
+		if v, ok := d.GetOk("auto_tune_options"); ok && len(v.([]interface{})) > 0 {
+			in.AutoTuneOptions = expandAutoTuneOptions(v.([]interface{})[0].(map[string]interface{}))
+		}
+
+		_, err = conn.UpdateElasticsearchDomainConfig(in)
+
+		if err != nil {
+			return resource.NonRetryableError(err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("Error modifying config for Elasticsearch domain: %s", err)
+	}
+
+	log.Printf("[DEBUG] Config for Elasticsearch domain %q modified", d.Id())
+
 	return resourceDomainRead(d, meta)
 }
 
@@ -697,6 +781,18 @@ func resourceDomainRead(d *schema.ResourceData, meta interface{}) error {
 
 	ds := out.DomainStatus
 
+	out, err := conn.DescribeElasticsearchDomainConfig(&elasticsearch.DescribeElasticsearchDomainConfigInput{
+		DomainName: aws.String(d.Get("domain_name").(string)),
+	})
+
+    if err != nil {
+        return err
+    }
+
+    log.Printf("[DEBUG] Received config for Elasticsearch domain: %s", out)
+
+    dc := out.DomainConfig
+
 	if ds.AccessPolicies != nil && aws.StringValue(ds.AccessPolicies) != "" {
 		policies, err := structure.NormalizeJsonString(aws.StringValue(ds.AccessPolicies))
 		if err != nil {
@@ -749,6 +845,13 @@ func resourceDomainRead(d *schema.ResourceData, meta interface{}) error {
 			return fmt.Errorf("error setting advanced_security_options: %w", err)
 		}
 	}
+
+    if v := dc.AutoTuneOptions; v != nil {
+       err = d.Set("auto_tune_options", flattenAutoTuneOptions(v.AutoTuneOptions))
+    }
+    if err != nil {
+        return err
+    }
 
 	if err := d.Set("snapshot_options", flattenSnapshotOptions(ds.SnapshotOptions)); err != nil {
 		return fmt.Errorf("error setting snapshot_options: %s", err)
@@ -843,6 +946,10 @@ func resourceDomainUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	if d.HasChange("advanced_security_options") {
 		input.AdvancedSecurityOptions = expandAdvancedSecurityOptions(d.Get("advanced_security_options").([]interface{}))
+	}
+
+	if d.HasChange("auto_tune_options") {
+		input.AutoTuneOptions = expandAutoTuneOptions(d.Get("auto_tune_options").([]interface{})[0].(map[string]interface{}))
 	}
 
 	if d.HasChange("domain_endpoint_options") {
