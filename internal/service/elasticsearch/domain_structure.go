@@ -46,6 +46,54 @@ func expandAdvancedSecurityOptions(m []interface{}) *elasticsearch.AdvancedSecur
 	return &config
 }
 
+func expandAutoTuneOptions(tfMap map[string]interface{}) *elasticsearch.AutoTuneOptionsInput {
+	if tfMap == nil {
+		return nil
+	}
+
+	options := elasticsearch.AutoTuneOptionsInput{}
+
+	options.DesiredState = aws.String(tfMap["desired_state"].(string))
+
+	if v, ok := tfMap["maintenance_schedule"].(*schema.Set); ok && v.Len() > 0 {
+		options.MaintenanceSchedules = expandAutoTuneMaintenanceSchedules(v.List())
+	}
+
+	return &options
+}
+
+func expandAutoTuneMaintenanceSchedules(tfList []interface{}) []*elasticsearch.AutoTuneMaintenanceSchedule {
+	var autoTuneMaintenanceSchedules []*elasticsearch.AutoTuneMaintenanceSchedule
+
+	for _, tfMapRaw := range tfList {
+		tfMap, _ := tfMapRaw.(map[string]interface{})
+
+		autoTuneMaintenanceSchedule := &elasticsearch.AutoTuneMaintenanceSchedule{}
+
+		startAt, _ := time.Parse(time.RFC3339, tfMap["start_at"].(string))
+		autoTuneMaintenanceSchedule.StartAt = aws.Time(startAt)
+
+		if v, ok := tfMap["duration"].([]interface{}); ok {
+			autoTuneMaintenanceSchedule.Duration = expandAutoTuneMaintenanceScheduleDuration(v[0].(map[string]interface{}))
+		}
+
+		autoTuneMaintenanceSchedule.CronExpressionForRecurrence = aws.String(tfMap["cron_expression_for_recurrence"].(string))
+
+		autoTuneMaintenanceSchedules = append(autoTuneMaintenanceSchedules, autoTuneMaintenanceSchedule)
+	}
+
+	return autoTuneMaintenanceSchedules
+}
+
+func expandAutoTuneMaintenanceScheduleDuration(tfMap map[string]interface{}) *elasticsearch.Duration {
+	autoTuneMaintenanceScheduleDuration := &elasticsearch.Duration{
+		Value: aws.Int64(int64(tfMap["value"].(int))),
+		Unit:  aws.String(tfMap["unit"].(string)),
+	}
+
+	return autoTuneMaintenanceScheduleDuration
+}
+
 func expandESSAMLOptions(data []interface{}) *elasticsearch.SAMLOptionsInput {
 	if len(data) == 0 {
 		return nil
@@ -128,6 +176,8 @@ func flattenAutoTuneOptions(autoTuneOptions *elasticsearch.AutoTuneOptions) map[
 		m["maintenance_schedule"] = flattenAutoTuneMaintenanceSchedules(v)
 	}
 
+	m["rollback_on_disable"] = aws.StringValue(autoTuneOptions.RollbackOnDisable)
+
 	return m
 }
 
@@ -139,22 +189,18 @@ func flattenAutoTuneMaintenanceSchedules(autoTuneMaintenanceSchedules []*elastic
 	var tfList []interface{}
 
 	for _, autoTuneMaintenanceSchedule := range autoTuneMaintenanceSchedules {
-		tfList = append(tfList, flattenAutoTuneMaintenanceSchedule(autoTuneMaintenanceSchedule))
+		m := map[string]interface{}{}
+
+		m["start_at"] = aws.TimeValue(autoTuneMaintenanceSchedule.StartAt).Format(time.RFC3339)
+
+		m["duration"] = []interface{}{flattenAutoTuneMaintenanceScheduleDuration(autoTuneMaintenanceSchedule.Duration)}
+
+		m["cron_expression_for_recurrence"] = aws.StringValue(autoTuneMaintenanceSchedule.CronExpressionForRecurrence)
+
+		tfList = append(tfList, m)
 	}
 
 	return tfList
-}
-
-func flattenAutoTuneMaintenanceSchedule(autoTuneMaintenanceSchedule *elasticsearch.AutoTuneMaintenanceSchedule) map[string]interface{} {
-	m := map[string]interface{}{}
-
-	m["start_at"] = aws.TimeValue(autoTuneMaintenanceSchedule.StartAt).Format(time.RFC3339)
-
-	m["duration"] = []interface{}{flattenAutoTuneMaintenanceScheduleDuration(autoTuneMaintenanceSchedule.Duration)}
-
-	m["cron_expression_for_recurrence"] = aws.StringValue(autoTuneMaintenanceSchedule.CronExpressionForRecurrence)
-
-	return m
 }
 
 func flattenAutoTuneMaintenanceScheduleDuration(autoTuneMaintenanceScheduleDuration *elasticsearch.Duration) map[string]interface{} {

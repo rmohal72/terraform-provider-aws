@@ -83,6 +83,10 @@ func DataSourceDomain() *schema.Resource {
 								},
 							},
 						},
+						"rollback_on_disable": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
 					},
 				},
 			},
@@ -346,7 +350,7 @@ func dataSourceDomainRead(d *schema.ResourceData, meta interface{}) error {
 
 	resp2, err2 := conn.DescribeElasticsearchDomainConfig(req2)
 	if err2 != nil {
-		return fmt.Errorf("error querying elasticsearch_domain: %w", err2)
+		return fmt.Errorf("error querying config for elasticsearch_domain: %w", err2)
 	}
 
 	if resp2.DomainConfig == nil {
