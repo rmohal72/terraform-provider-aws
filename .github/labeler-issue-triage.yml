@@ -94,7 +94,7 @@ service/cloudtrail:
   - '((\*|-) ?`?|(data|resource) "?)aws_cloudtrail'
 service/cloudwatch:
   - '((\*|-) ?`?|(data|resource) "?)aws_cloudwatch_(?!(event_|log_|query_))'
-service/cloudwatchevents:
+service/eventbridge:
   - '((\*|-) ?`?|(data|resource) "?)aws_cloudwatch_event_'
 service/cloudwatchlogs:
   - '((\*|-) ?`?|(data|resource) "?)aws_cloudwatch_(log_|query_)'

@@ -1,4 +1,4 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"encoding/json"
@@ -7,16 +7,16 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	events "github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	events "github.com/aws/aws-sdk-go/service/eventbridge"
 	sdkacctest "github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
-func TestAccCloudWatchEventsBusPolicy_basic(t *testing.T) {
+func TestAccEventBridgeBusPolicy_basic(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_bus_policy.test"
 	rstring := sdkacctest.RandString(5)
 
@@ -49,7 +49,7 @@ func TestAccCloudWatchEventsBusPolicy_basic(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsBusPolicy_disappears(t *testing.T) {
+func TestAccEventBridgeBusPolicy_disappears(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_bus_policy.test"
 	rstring := sdkacctest.RandString(5)
 
@@ -63,7 +63,7 @@ func TestAccCloudWatchEventsBusPolicy_disappears(t *testing.T) {
 				Config: testAccBusPolicyConfig(rstring),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckBusPolicyExists(resourceName),
-					acctest.CheckResourceDisappears(acctest.Provider, tfcloudwatchevents.ResourceBusPolicy(), resourceName),
+					acctest.CheckResourceDisappears(acctest.Provider, tfeventbridge.ResourceBusPolicy(), resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -88,11 +88,11 @@ func testAccCheckBusPolicyExists(pr string) resource.TestCheckFunc {
 			Name: aws.String(eventBusName),
 		}
 
-		cloudWatchEventsConnection := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
-		describedEventBus, err := cloudWatchEventsConnection.DescribeEventBus(input)
+		conn := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
+		describedEventBus, err := conn.DescribeEventBus(input)
 
 		if err != nil {
-			return fmt.Errorf("Reading CloudWatch Events bus policy for '%s' failed: %w", pr, err)
+			return fmt.Errorf("Reading EventBridge bus policy for '%s' failed: %w", pr, err)
 		}
 		if describedEventBus.Policy == nil || len(*describedEventBus.Policy) == 0 {
 			return fmt.Errorf("Not found: %s", pr)
@@ -116,7 +116,7 @@ func testAccBusPolicyDocument(pr string) resource.TestCheckFunc {
 		var eventBusPolicyResourcePolicyDocument map[string]interface{}
 		err := json.Unmarshal([]byte(eventBusPolicyResource.Primary.Attributes["policy"]), &eventBusPolicyResourcePolicyDocument)
 		if err != nil {
-			return fmt.Errorf("Parsing CloudWatch Events bus policy for '%s' failed: %w", pr, err)
+			return fmt.Errorf("Parsing EventBridge bus policy for '%s' failed: %w", pr, err)
 		}
 
 		eventBusName := eventBusPolicyResource.Primary.ID
@@ -125,24 +125,24 @@ func testAccBusPolicyDocument(pr string) resource.TestCheckFunc {
 			Name: aws.String(eventBusName),
 		}
 
-		cloudWatchEventsConnection := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
-		describedEventBus, err := cloudWatchEventsConnection.DescribeEventBus(input)
+		conn := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
+		describedEventBus, err := conn.DescribeEventBus(input)
 		if err != nil {
-			return fmt.Errorf("Reading CloudWatch Events bus policy for '%s' failed: %w", pr, err)
+			return fmt.Errorf("Reading EventBridge bus policy for '%s' failed: %w", pr, err)
 		}
 
 		var describedEventBusPolicy map[string]interface{}
 		err = json.Unmarshal([]byte(*describedEventBus.Policy), &describedEventBusPolicy)
 
 		if err != nil {
-			return fmt.Errorf("Reading CloudWatch Events bus policy for '%s' failed: %w", pr, err)
+			return fmt.Errorf("Reading EventBridge bus policy for '%s' failed: %w", pr, err)
 		}
 		if describedEventBus.Policy == nil || len(*describedEventBus.Policy) == 0 {
 			return fmt.Errorf("Not found: %s", pr)
 		}
 
 		if !reflect.DeepEqual(describedEventBusPolicy, eventBusPolicyResourcePolicyDocument) {
-			return fmt.Errorf("CloudWatch Events bus policy mismatch for '%s'", pr)
+			return fmt.Errorf("EventBridge bus policy mismatch for '%s'", pr)
 		}
 
 		return nil

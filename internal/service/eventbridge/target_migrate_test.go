@@ -1,11 +1,11 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"context"
 	"reflect"
 	"testing"
 
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
 func testResourceTargetStateDataV0() map[string]interface{} {
@@ -47,7 +47,7 @@ func testResourceTargetStateDataV1EventBusName() map[string]interface{} {
 
 func TestTargetStateUpgradeV0(t *testing.T) {
 	expected := testResourceTargetStateDataV1()
-	actual, err := tfcloudwatchevents.TargetStateUpgradeV0(context.Background(), testResourceTargetStateDataV0(), nil)
+	actual, err := tfeventbridge.TargetStateUpgradeV0(context.Background(), testResourceTargetStateDataV0(), nil)
 	if err != nil {
 		t.Fatalf("error migrating state: %s", err)
 	}
@@ -59,7 +59,7 @@ func TestTargetStateUpgradeV0(t *testing.T) {
 
 func TestTargetStateUpgradeV0EventBusName(t *testing.T) {
 	expected := testResourceTargetStateDataV1EventBusName()
-	actual, err := tfcloudwatchevents.TargetStateUpgradeV0(context.Background(), testResourceTargetStateDataV0EventBusName(), nil)
+	actual, err := tfeventbridge.TargetStateUpgradeV0(context.Background(), testResourceTargetStateDataV0EventBusName(), nil)
 	if err != nil {
 		t.Fatalf("error migrating state: %s", err)
 	}

@@ -41,7 +41,7 @@ variable "service_labels" {
     "cloudsearch",
     "cloudtrail",
     "cloudwatch",
-    "cloudwatchevents",
+    "eventbridge",
     "cloudwatchlogs",
     "codeartifact",
     "codebuild",

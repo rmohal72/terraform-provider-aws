@@ -1,9 +1,9 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"testing"
 
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
 func TestRuleEnabledFromState(t *testing.T) {
@@ -36,7 +36,7 @@ func TestRuleEnabledFromState(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.TestName, func(t *testing.T) {
-			gotEnabled, err := tfcloudwatchevents.RuleEnabledFromState(testCase.State)
+			gotEnabled, err := tfeventbridge.RuleEnabledFromState(testCase.State)
 
 			if err == nil && testCase.ExpectedError {
 				t.Fatalf("expected error, got no error")
@@ -73,7 +73,7 @@ func RuleStateFromEnabled(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.TestName, func(t *testing.T) {
-			gotState := tfcloudwatchevents.RuleStateFromEnabled(testCase.Enabled)
+			gotState := tfeventbridge.RuleStateFromEnabled(testCase.Enabled)
 
 			if gotState != testCase.ExpectedState {
 				t.Errorf("got enabled %s, expected %s", gotState, testCase.ExpectedState)

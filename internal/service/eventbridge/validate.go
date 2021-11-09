@@ -9,14 +9,14 @@ import (
 	"github.com/hashicorp/terraform-provider-aws/internal/verify"
 )
 
-func validateCloudWatchEventRuleName(v interface{}, k string) (ws []string, errors []error) {
+func validateRuleName(v interface{}, k string) (ws []string, errors []error) {
 	value := v.(string)
 	if len(value) > 64 {
 		errors = append(errors, fmt.Errorf(
 			"%q cannot be longer than 64 characters: %q", k, value))
 	}
 
-	// http://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_PutRule.html
+	// http://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutRule.html
 	pattern := `^[\.\-_A-Za-z0-9]+$`
 	if !regexp.MustCompile(pattern).MatchString(value) {
 		errors = append(errors, fmt.Errorf(
@@ -27,14 +27,14 @@ func validateCloudWatchEventRuleName(v interface{}, k string) (ws []string, erro
 	return
 }
 
-func validateCloudWatchEventTargetId(v interface{}, k string) (ws []string, errors []error) {
+func validateTargetID(v interface{}, k string) (ws []string, errors []error) {
 	value := v.(string)
 	if len(value) > 64 {
 		errors = append(errors, fmt.Errorf(
 			"%q cannot be longer than 64 characters: %q", k, value))
 	}
 
-	// http://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_Target.html
+	// http://docs.aws.amazon.com/eventbridge/latest/APIReference/API_Target.html
 	pattern := `^[\.\-_A-Za-z0-9]+$`
 	if !regexp.MustCompile(pattern).MatchString(value) {
 		errors = append(errors, fmt.Errorf(

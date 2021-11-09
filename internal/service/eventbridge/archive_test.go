@@ -1,20 +1,20 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	events "github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	events "github.com/aws/aws-sdk-go/service/eventbridge"
 	sdkacctest "github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
-func TestAccCloudWatchEventsArchive_basic(t *testing.T) {
+func TestAccEventBridgeArchive_basic(t *testing.T) {
 	var v1 events.DescribeArchiveOutput
 	archiveName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_cloudwatch_event_archive.test"
@@ -28,7 +28,7 @@ func TestAccCloudWatchEventsArchive_basic(t *testing.T) {
 			{
 				Config: testAccArchiveConfig(archiveName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventArchiveExists(resourceName, &v1),
+					testAccCheckArchiveExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "name", archiveName),
 					resource.TestCheckResourceAttr(resourceName, "retention_days", "0"),
 					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "events", fmt.Sprintf("archive/%s", archiveName)),
@@ -45,7 +45,7 @@ func TestAccCloudWatchEventsArchive_basic(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsArchive_update(t *testing.T) {
+func TestAccEventBridgeArchive_update(t *testing.T) {
 	var v1 events.DescribeArchiveOutput
 	resourceName := "aws_cloudwatch_event_archive.test"
 	archiveName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
@@ -59,13 +59,13 @@ func TestAccCloudWatchEventsArchive_update(t *testing.T) {
 			{
 				Config: testAccArchiveConfig(archiveName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventArchiveExists(resourceName, &v1),
+					testAccCheckArchiveExists(resourceName, &v1),
 				),
 			},
 			{
 				Config: testAccArchiveConfig_updateAttributes(archiveName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventArchiveExists(resourceName, &v1),
+					testAccCheckArchiveExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "retention_days", "7"),
 					acctest.CheckResourceAttrEquivalentJSON(resourceName, "event_pattern", "{\"source\":[\"company.team.service\"]}"),
 					resource.TestCheckResourceAttr(resourceName, "description", "test"),
@@ -75,7 +75,7 @@ func TestAccCloudWatchEventsArchive_update(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsArchive_disappears(t *testing.T) {
+func TestAccEventBridgeArchive_disappears(t *testing.T) {
 	var v events.DescribeArchiveOutput
 	archiveName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_cloudwatch_event_archive.test"
@@ -89,8 +89,8 @@ func TestAccCloudWatchEventsArchive_disappears(t *testing.T) {
 			{
 				Config: testAccArchiveConfig(archiveName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventArchiveExists(resourceName, &v),
-					acctest.CheckResourceDisappears(acctest.Provider, tfcloudwatchevents.ResourceArchive(), resourceName),
+					testAccCheckArchiveExists(resourceName, &v),
+					acctest.CheckResourceDisappears(acctest.Provider, tfeventbridge.ResourceArchive(), resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -113,14 +113,14 @@ func testAccCheckArchiveDestroy(s *terraform.State) error {
 		resp, err := conn.DescribeArchive(&params)
 
 		if err == nil {
-			return fmt.Errorf("CloudWatch Events event bus (%s) still exists: %s", rs.Primary.ID, resp)
+			return fmt.Errorf("EventBridge event bus (%s) still exists: %s", rs.Primary.ID, resp)
 		}
 	}
 
 	return nil
 }
 
-func testAccCheckCloudWatchEventArchiveExists(n string, v *events.DescribeArchiveOutput) resource.TestCheckFunc {
+func testAccCheckArchiveExists(n string, v *events.DescribeArchiveOutput) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
@@ -138,7 +138,7 @@ func testAccCheckCloudWatchEventArchiveExists(n string, v *events.DescribeArchiv
 		}
 
 		if resp == nil {
-			return fmt.Errorf("CloudWatch Events archive (%s) not found", n)
+			return fmt.Errorf("EventBridge archive (%s) not found", n)
 		}
 
 		*v = *resp
@@ -147,7 +147,7 @@ func testAccCheckCloudWatchEventArchiveExists(n string, v *events.DescribeArchiv
 	}
 }
 
-func TestAccCloudWatchEventsArchive_retentionSetOnCreation(t *testing.T) {
+func TestAccEventBridgeArchive_retentionSetOnCreation(t *testing.T) {
 	var v1 events.DescribeArchiveOutput
 	archiveName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_cloudwatch_event_archive.test"
@@ -161,7 +161,7 @@ func TestAccCloudWatchEventsArchive_retentionSetOnCreation(t *testing.T) {
 			{
 				Config: testAccArchiveConfig_retentionOnCreation(archiveName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventArchiveExists(resourceName, &v1),
+					testAccCheckArchiveExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "name", archiveName),
 					resource.TestCheckResourceAttr(resourceName, "retention_days", "1"),
 					acctest.CheckResourceAttrRegionalARN(resourceName, "arn", "events", fmt.Sprintf("archive/%s", archiveName)),

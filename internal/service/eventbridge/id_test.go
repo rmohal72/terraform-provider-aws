@@ -1,9 +1,9 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"testing"
 
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
 func TestPermissionParseResourceID(t *testing.T) {
@@ -22,19 +22,19 @@ func TestPermissionParseResourceID(t *testing.T) {
 		{
 			TestName:      "single part",
 			InputID:       "TestStatement",
-			ExpectedPart0: tfcloudwatchevents.DefaultEventBusName,
+			ExpectedPart0: tfeventbridge.DefaultEventBusName,
 			ExpectedPart1: "TestStatement",
 		},
 		{
 			TestName:      "two parts",
-			InputID:       tfcloudwatchevents.PermissionCreateResourceID("TestEventBus", "TestStatement"),
+			InputID:       tfeventbridge.PermissionCreateResourceID("TestEventBus", "TestStatement"),
 			ExpectedPart0: "TestEventBus",
 			ExpectedPart1: "TestStatement",
 		},
 		{
 			TestName:      "two parts with default event bus",
-			InputID:       tfcloudwatchevents.PermissionCreateResourceID(tfcloudwatchevents.DefaultEventBusName, "TestStatement"),
-			ExpectedPart0: tfcloudwatchevents.DefaultEventBusName,
+			InputID:       tfeventbridge.PermissionCreateResourceID(tfeventbridge.DefaultEventBusName, "TestStatement"),
+			ExpectedPart0: tfeventbridge.DefaultEventBusName,
 			ExpectedPart1: "TestStatement",
 		},
 		{
@@ -66,7 +66,7 @@ func TestPermissionParseResourceID(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.TestName, func(t *testing.T) {
-			gotPart0, gotPart1, err := tfcloudwatchevents.PermissionParseResourceID(testCase.InputID)
+			gotPart0, gotPart1, err := tfeventbridge.PermissionParseResourceID(testCase.InputID)
 
 			if err == nil && testCase.ExpectedError {
 				t.Fatalf("expected error, got no error")
@@ -103,19 +103,19 @@ func TestRuleParseResourceID(t *testing.T) {
 		{
 			TestName:      "single part",
 			InputID:       "TestRule",
-			ExpectedPart0: tfcloudwatchevents.DefaultEventBusName,
+			ExpectedPart0: tfeventbridge.DefaultEventBusName,
 			ExpectedPart1: "TestRule",
 		},
 		{
 			TestName:      "two parts",
-			InputID:       tfcloudwatchevents.RuleCreateResourceID("TestEventBus", "TestRule"),
+			InputID:       tfeventbridge.RuleCreateResourceID("TestEventBus", "TestRule"),
 			ExpectedPart0: "TestEventBus",
 			ExpectedPart1: "TestRule",
 		},
 		{
 			TestName:      "two parts with default event bus",
-			InputID:       tfcloudwatchevents.RuleCreateResourceID(tfcloudwatchevents.DefaultEventBusName, "TestRule"),
-			ExpectedPart0: tfcloudwatchevents.DefaultEventBusName,
+			InputID:       tfeventbridge.RuleCreateResourceID(tfeventbridge.DefaultEventBusName, "TestRule"),
+			ExpectedPart0: tfeventbridge.DefaultEventBusName,
 			ExpectedPart1: "TestRule",
 		},
 		{
@@ -133,7 +133,7 @@ func TestRuleParseResourceID(t *testing.T) {
 		{
 			TestName: "ARN event bus",
 			//lintignore:AWSAT003,AWSAT005
-			InputID: tfcloudwatchevents.RuleCreateResourceID("arn:aws:events:us-east-2:123456789012:event-bus/default", "TestRule"),
+			InputID: tfeventbridge.RuleCreateResourceID("arn:aws:events:us-east-2:123456789012:event-bus/default", "TestRule"),
 			//lintignore:AWSAT003,AWSAT005
 			ExpectedPart0: "arn:aws:events:us-east-2:123456789012:event-bus/default",
 			ExpectedPart1: "TestRule",
@@ -177,7 +177,7 @@ func TestRuleParseResourceID(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.TestName, func(t *testing.T) {
-			gotPart0, gotPart1, err := tfcloudwatchevents.RuleParseResourceID(testCase.InputID)
+			gotPart0, gotPart1, err := tfeventbridge.RuleParseResourceID(testCase.InputID)
 
 			if err == nil && testCase.ExpectedError {
 				t.Fatalf("expected error, got no error")
@@ -220,7 +220,7 @@ func TestTargetParseImportID(t *testing.T) {
 		{
 			TestName:      "two parts",
 			InputID:       "TestTarget/TestRule",
-			ExpectedPart0: tfcloudwatchevents.DefaultEventBusName,
+			ExpectedPart0: tfeventbridge.DefaultEventBusName,
 			ExpectedPart1: "TestTarget",
 			ExpectedPart2: "TestRule",
 		},
@@ -233,8 +233,8 @@ func TestTargetParseImportID(t *testing.T) {
 		},
 		{
 			TestName:      "three parts with default event bus",
-			InputID:       tfcloudwatchevents.DefaultEventBusName + "/TestRule/TestTarget",
-			ExpectedPart0: tfcloudwatchevents.DefaultEventBusName,
+			InputID:       tfeventbridge.DefaultEventBusName + "/TestRule/TestTarget",
+			ExpectedPart0: tfeventbridge.DefaultEventBusName,
 			ExpectedPart1: "TestRule",
 			ExpectedPart2: "TestTarget",
 		},
@@ -326,7 +326,7 @@ func TestTargetParseImportID(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.TestName, func(t *testing.T) {
-			gotPart0, gotPart1, gotPart2, err := tfcloudwatchevents.TargetParseImportID(testCase.InputID)
+			gotPart0, gotPart1, gotPart2, err := tfeventbridge.TargetParseImportID(testCase.InputID)
 
 			if err == nil && testCase.ExpectedError {
 				t.Fatalf("expected error, got no error")

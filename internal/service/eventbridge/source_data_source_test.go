@@ -1,4 +1,4 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"fmt"
@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	"github.com/aws/aws-sdk-go/service/eventbridge"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 )
 
-func TestAccCloudWatchEventsSourceDataSource_basic(t *testing.T) {
+func TestAccEventBridgeSourceDataSource_basic(t *testing.T) {
 	key := "EVENT_BRIDGE_PARTNER_EVENT_SOURCE_NAME"
 	busName := os.Getenv(key)
 	if busName == "" {
@@ -28,7 +28,7 @@ func TestAccCloudWatchEventsSourceDataSource_basic(t *testing.T) {
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:   func() { acctest.PreCheck(t) },
-		ErrorCheck: acctest.ErrorCheck(t, cloudwatchevents.EndpointsID),
+		ErrorCheck: acctest.ErrorCheck(t, eventbridge.EndpointsID),
 		Providers:  acctest.Providers,
 		Steps: []resource.TestStep{
 			{

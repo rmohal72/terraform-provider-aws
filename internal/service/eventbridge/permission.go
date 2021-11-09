@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
-	events "github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	events "github.com/aws/aws-sdk-go/service/eventbridge"
 	"github.com/hashicorp/aws-sdk-go-base/tfawserr"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -34,7 +34,7 @@ func ResourcePermission() *schema.Resource {
 				Type:         schema.TypeString,
 				Optional:     true,
 				Default:      "events:PutEvents",
-				ValidateFunc: validateCloudWatchEventPermissionAction,
+				ValidateFunc: validatePermissionAction,
 			},
 			"condition": {
 				Type:     schema.TypeList,
@@ -70,13 +70,13 @@ func ResourcePermission() *schema.Resource {
 			"principal": {
 				Type:         schema.TypeString,
 				Required:     true,
-				ValidateFunc: validateCloudWatchEventPermissionPrincipal,
+				ValidateFunc: validatePermissionPrincipal,
 			},
 			"statement_id": {
 				Type:         schema.TypeString,
 				Required:     true,
 				ForceNew:     true,
-				ValidateFunc: validateCloudWatchEventPermissionStatementID,
+				ValidateFunc: validatePermissionStatementID,
 			},
 		},
 	}
@@ -90,16 +90,16 @@ func resourcePermissionCreate(d *schema.ResourceData, meta interface{}) error {
 
 	input := events.PutPermissionInput{
 		Action:       aws.String(d.Get("action").(string)),
-		Condition:    expandCloudWatchEventsCondition(d.Get("condition").([]interface{})),
+		Condition:    expandEventBridgeCondition(d.Get("condition").([]interface{})),
 		EventBusName: aws.String(eventBusName),
 		Principal:    aws.String(d.Get("principal").(string)),
 		StatementId:  aws.String(statementID),
 	}
 
-	log.Printf("[DEBUG] Creating CloudWatch Events permission: %s", input)
+	log.Printf("[DEBUG] Creating EventBridge permission: %s", input)
 	_, err := conn.PutPermission(&input)
 	if err != nil {
-		return fmt.Errorf("Creating CloudWatch Events permission failed: %w", err)
+		return fmt.Errorf("Creating EventBridge permission failed: %w", err)
 	}
 
 	id := PermissionCreateResourceID(eventBusName, statementID)
@@ -108,26 +108,26 @@ func resourcePermissionCreate(d *schema.ResourceData, meta interface{}) error {
 	return resourcePermissionRead(d, meta)
 }
 
-// See also: https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_DescribeEventBus.html
+// See also: https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_DescribeEventBus.html
 func resourcePermissionRead(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*conns.AWSClient).EventBridgeConn
 
 	eventBusName, statementID, err := PermissionParseResourceID(d.Id())
 	if err != nil {
-		return fmt.Errorf("error reading CloudWatch Events permission (%s): %w", d.Id(), err)
+		return fmt.Errorf("error reading EventBridge permission (%s): %w", d.Id(), err)
 	}
 	input := events.DescribeEventBusInput{
 		Name: aws.String(eventBusName),
 	}
 	var output *events.DescribeEventBusOutput
-	var policyStatement *CloudWatchEventPermissionPolicyStatement
+	var policyStatement *PermissionPolicyStatement
 
 	// Especially with concurrent PutPermission calls there can be a slight delay
 	err = resource.Retry(tfiam.PropagationTimeout, func() *resource.RetryError {
-		log.Printf("[DEBUG] Reading CloudWatch Events bus: %s", input)
+		log.Printf("[DEBUG] Reading EventBridge bus: %s", input)
 		output, err = conn.DescribeEventBus(&input)
 		if err != nil {
-			return resource.NonRetryableError(fmt.Errorf("reading CloudWatch Events permission (%s) failed: %w", d.Id(), err))
+			return resource.NonRetryableError(fmt.Errorf("reading EventBridge permission (%s) failed: %w", d.Id(), err))
 		}
 
 		policyStatement, err = getPolicyStatement(output, statementID)
@@ -145,12 +145,12 @@ func resourcePermissionRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	if tfresource.NotFound(err) {
-		log.Printf("[WARN] CloudWatch Events permission (%s) not found, removing from state", d.Id())
+		log.Printf("[WARN] EventBridge permission (%s) not found, removing from state", d.Id())
 		d.SetId("")
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("error reading CloudWatch Events permission (%s): %w", d.Id(), err)
+		return fmt.Errorf("error reading EventBridge permission (%s): %w", d.Id(), err)
 	}
 
 	d.Set("action", policyStatement.Action)
@@ -160,7 +160,7 @@ func resourcePermissionRead(d *schema.ResourceData, meta interface{}) error {
 	}
 	d.Set("event_bus_name", busName)
 
-	if err := d.Set("condition", flattenCloudWatchEventPermissionPolicyStatementCondition(policyStatement.Condition)); err != nil {
+	if err := d.Set("condition", flattenPermissionPolicyStatementCondition(policyStatement.Condition)); err != nil {
 		return fmt.Errorf("error setting condition: %w", err)
 	}
 
@@ -173,7 +173,7 @@ func resourcePermissionRead(d *schema.ResourceData, meta interface{}) error {
 				principalARN, err := arn.Parse(v)
 
 				if err != nil {
-					return fmt.Errorf("error parsing CloudWatch Events Permission (%s) principal as ARN (%s): %w", d.Id(), v, err)
+					return fmt.Errorf("error parsing EventBridge Permission (%s) principal as ARN (%s): %w", d.Id(), v, err)
 				}
 
 				d.Set("principal", principalARN.AccountID)
@@ -188,19 +188,19 @@ func resourcePermissionRead(d *schema.ResourceData, meta interface{}) error {
 	return nil
 }
 
-func getPolicyStatement(output *events.DescribeEventBusOutput, statementID string) (*CloudWatchEventPermissionPolicyStatement, error) {
+func getPolicyStatement(output *events.DescribeEventBusOutput, statementID string) (*PermissionPolicyStatement, error) {
 	var policyDoc PermissionPolicyDoc
 
 	if output == nil || output.Policy == nil {
 		return nil, &resource.NotFoundError{
-			Message:      fmt.Sprintf("CloudWatch Events permission %q not found", statementID),
+			Message:      fmt.Sprintf("EventBridge permission %q not found", statementID),
 			LastResponse: output,
 		}
 	}
 
 	err := json.Unmarshal([]byte(*output.Policy), &policyDoc)
 	if err != nil {
-		return nil, fmt.Errorf("error reading CloudWatch Events permission (%s): %w", statementID, err)
+		return nil, fmt.Errorf("error reading EventBridge permission (%s): %w", statementID, err)
 	}
 
 	return FindPermissionPolicyStatementByID(&policyDoc, statementID)
@@ -211,25 +211,25 @@ func resourcePermissionUpdate(d *schema.ResourceData, meta interface{}) error {
 
 	eventBusName, statementID, err := PermissionParseResourceID(d.Id())
 	if err != nil {
-		return fmt.Errorf("error updating CloudWatch Events permission (%s): %w", d.Id(), err)
+		return fmt.Errorf("error updating EventBridge permission (%s): %w", d.Id(), err)
 	}
 	input := events.PutPermissionInput{
 		Action:       aws.String(d.Get("action").(string)),
-		Condition:    expandCloudWatchEventsCondition(d.Get("condition").([]interface{})),
+		Condition:    expandEventBridgeCondition(d.Get("condition").([]interface{})),
 		EventBusName: aws.String(eventBusName),
 		Principal:    aws.String(d.Get("principal").(string)),
 		StatementId:  aws.String(statementID),
 	}
 
-	log.Printf("[DEBUG] Update CloudWatch Events permission: %s", input)
+	log.Printf("[DEBUG] Update EventBridge permission: %s", input)
 	_, err = conn.PutPermission(&input)
 	if tfawserr.ErrMessageContains(err, events.ErrCodeResourceNotFoundException, "") {
-		log.Printf("[WARN] CloudWatch Events permission %q not found, removing from state", d.Id())
+		log.Printf("[WARN] EventBridge permission %q not found, removing from state", d.Id())
 		d.SetId("")
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("error updating CloudWatch Events permission (%s): %w", d.Id(), err)
+		return fmt.Errorf("error updating EventBridge permission (%s): %w", d.Id(), err)
 	}
 
 	return resourcePermissionRead(d, meta)
@@ -240,26 +240,26 @@ func resourcePermissionDelete(d *schema.ResourceData, meta interface{}) error {
 
 	eventBusName, statementID, err := PermissionParseResourceID(d.Id())
 	if err != nil {
-		return fmt.Errorf("error deleting CloudWatch Events permission (%s): %w", d.Id(), err)
+		return fmt.Errorf("error deleting EventBridge permission (%s): %w", d.Id(), err)
 	}
 	input := events.RemovePermissionInput{
 		EventBusName: aws.String(eventBusName),
 		StatementId:  aws.String(statementID),
 	}
 
-	log.Printf("[DEBUG] Delete CloudWatch Events permission: %s", input)
+	log.Printf("[DEBUG] Delete EventBridge permission: %s", input)
 	_, err = conn.RemovePermission(&input)
 	if tfawserr.ErrMessageContains(err, events.ErrCodeResourceNotFoundException, "") {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("error deleting CloudWatch Events permission (%s): %w", d.Id(), err)
+		return fmt.Errorf("error deleting EventBridge permission (%s): %w", d.Id(), err)
 	}
 	return nil
 }
 
-// https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_PutPermission.html#API_PutPermission_RequestParameters
-func validateCloudWatchEventPermissionAction(v interface{}, k string) (ws []string, es []error) {
+// https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutPermission.html#API_PutPermission_RequestParameters
+func validatePermissionAction(v interface{}, k string) (ws []string, es []error) {
 	value := v.(string)
 	if (len(value) < 1) || (len(value) > 64) {
 		es = append(es, fmt.Errorf("%q must be between 1 and 64 characters", k))
@@ -271,8 +271,8 @@ func validateCloudWatchEventPermissionAction(v interface{}, k string) (ws []stri
 	return
 }
 
-// https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_PutPermission.html#API_PutPermission_RequestParameters
-func validateCloudWatchEventPermissionPrincipal(v interface{}, k string) (ws []string, es []error) {
+// https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutPermission.html#API_PutPermission_RequestParameters
+func validatePermissionPrincipal(v interface{}, k string) (ws []string, es []error) {
 	value := v.(string)
 	if !regexp.MustCompile(`^(\d{12}|\*)$`).MatchString(value) {
 		es = append(es, fmt.Errorf("%q must be * or a 12 digit AWS account ID", k))
@@ -280,8 +280,8 @@ func validateCloudWatchEventPermissionPrincipal(v interface{}, k string) (ws []s
 	return
 }
 
-// https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_PutPermission.html#API_PutPermission_RequestParameters
-func validateCloudWatchEventPermissionStatementID(v interface{}, k string) (ws []string, es []error) {
+// https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_PutPermission.html#API_PutPermission_RequestParameters
+func validatePermissionStatementID(v interface{}, k string) (ws []string, es []error) {
 	value := v.(string)
 	if (len(value) < 1) || (len(value) > 64) {
 		es = append(es, fmt.Errorf("%q must be between 1 and 64 characters", k))
@@ -294,11 +294,11 @@ func validateCloudWatchEventPermissionStatementID(v interface{}, k string) (ws [
 }
 
 // PermissionPolicyDoc represents the Policy attribute of DescribeEventBus
-// See also: https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_DescribeEventBus.html
+// See also: https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_DescribeEventBus.html
 type PermissionPolicyDoc struct {
 	Version    string
-	ID         string                                     `json:"Id,omitempty"`
-	Statements []CloudWatchEventPermissionPolicyStatement `json:"Statement"`
+	ID         string                      `json:"Id,omitempty"`
+	Statements []PermissionPolicyStatement `json:"Statement"`
 }
 
 // String returns the string representation
@@ -311,47 +311,47 @@ func (d PermissionPolicyDoc) GoString() string {
 	return d.String()
 }
 
-// CloudWatchEventPermissionPolicyStatement represents the Statement attribute of PermissionPolicyDoc
-// See also: https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_DescribeEventBus.html
-type CloudWatchEventPermissionPolicyStatement struct {
+// PermissionPolicyStatement represents the Statement attribute of PermissionPolicyDoc
+// See also: https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_DescribeEventBus.html
+type PermissionPolicyStatement struct {
 	Sid       string
 	Effect    string
 	Action    string
-	Condition *CloudWatchEventPermissionPolicyStatementCondition `json:"Condition,omitempty"`
-	Principal interface{}                                        // "*" or {"AWS": "arn:aws:iam::111111111111:root"}
+	Condition *PermissionPolicyStatementCondition `json:"Condition,omitempty"`
+	Principal interface{}                         // "*" or {"AWS": "arn:aws:iam::111111111111:root"}
 	Resource  string
 }
 
 // String returns the string representation
-func (s CloudWatchEventPermissionPolicyStatement) String() string {
+func (s PermissionPolicyStatement) String() string {
 	return awsutil.Prettify(s)
 }
 
 // GoString returns the string representation
-func (s CloudWatchEventPermissionPolicyStatement) GoString() string {
+func (s PermissionPolicyStatement) GoString() string {
 	return s.String()
 }
 
-// CloudWatchEventPermissionPolicyStatementCondition represents the Condition attribute of CloudWatchEventPermissionPolicyStatement
-// See also: https://docs.aws.amazon.com/AmazonCloudWatchEvents/latest/APIReference/API_DescribeEventBus.html
-type CloudWatchEventPermissionPolicyStatementCondition struct {
+// PermissionPolicyStatementCondition represents the Condition attribute of PermissionPolicyStatement
+// See also: https://docs.aws.amazon.com/eventbridge/latest/APIReference/API_DescribeEventBus.html
+type PermissionPolicyStatementCondition struct {
 	Key   string
 	Type  string
 	Value string
 }
 
 // String returns the string representation
-func (c CloudWatchEventPermissionPolicyStatementCondition) String() string {
+func (c PermissionPolicyStatementCondition) String() string {
 	return awsutil.Prettify(c)
 }
 
 // GoString returns the string representation
-func (c CloudWatchEventPermissionPolicyStatementCondition) GoString() string {
+func (c PermissionPolicyStatementCondition) GoString() string {
 	return c.String()
 }
 
-func (c *CloudWatchEventPermissionPolicyStatementCondition) UnmarshalJSON(b []byte) error {
-	var out CloudWatchEventPermissionPolicyStatementCondition
+func (c *PermissionPolicyStatementCondition) UnmarshalJSON(b []byte) error {
+	var out PermissionPolicyStatementCondition
 
 	// JSON representation: \"Condition\":{\"StringEquals\":{\"aws:PrincipalOrgID\":\"o-0123456789\"}}
 	var data map[string]map[string]string
@@ -361,7 +361,7 @@ func (c *CloudWatchEventPermissionPolicyStatementCondition) UnmarshalJSON(b []by
 
 	for typeKey, typeValue := range data {
 		for conditionKey, conditionValue := range typeValue {
-			out = CloudWatchEventPermissionPolicyStatementCondition{
+			out = PermissionPolicyStatementCondition{
 				Key:   conditionKey,
 				Type:  typeKey,
 				Value: conditionValue,
@@ -374,9 +374,9 @@ func (c *CloudWatchEventPermissionPolicyStatementCondition) UnmarshalJSON(b []by
 }
 
 func FindPermissionPolicyStatementByID(policy *PermissionPolicyDoc, id string) (
-	*CloudWatchEventPermissionPolicyStatement, error) {
+	*PermissionPolicyStatement, error) {
 
-	log.Printf("[DEBUG] Finding statement (%s) in CloudWatch Events permission policy: %s", id, policy)
+	log.Printf("[DEBUG] Finding statement (%s) in EventBridge permission policy: %s", id, policy)
 	for _, statement := range policy.Statements {
 		if statement.Sid == id {
 			return &statement, nil
@@ -386,11 +386,11 @@ func FindPermissionPolicyStatementByID(policy *PermissionPolicyDoc, id string) (
 	return nil, &resource.NotFoundError{
 		LastRequest:  id,
 		LastResponse: policy,
-		Message:      fmt.Sprintf("Failed to find statement (%s) in CloudWatch Events permission policy: %s", id, policy),
+		Message:      fmt.Sprintf("Failed to find statement (%s) in EventBridge permission policy: %s", id, policy),
 	}
 }
 
-func expandCloudWatchEventsCondition(l []interface{}) *events.Condition {
+func expandEventBridgeCondition(l []interface{}) *events.Condition {
 	if len(l) == 0 || l[0] == nil {
 		return nil
 	}
@@ -406,7 +406,7 @@ func expandCloudWatchEventsCondition(l []interface{}) *events.Condition {
 	return condition
 }
 
-func flattenCloudWatchEventPermissionPolicyStatementCondition(c *CloudWatchEventPermissionPolicyStatementCondition) []interface{} {
+func flattenPermissionPolicyStatementCondition(c *PermissionPolicyStatementCondition) []interface{} {
 	if c == nil {
 		return []interface{}{}
 	}

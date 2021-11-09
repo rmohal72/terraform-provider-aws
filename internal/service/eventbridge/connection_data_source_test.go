@@ -1,4 +1,4 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"testing"

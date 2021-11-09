@@ -1,4 +1,4 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"fmt"
@@ -9,17 +9,17 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws/endpoints"
-	events "github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	events "github.com/aws/aws-sdk-go/service/eventbridge"
 	sdkacctest "github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
 	"github.com/hashicorp/terraform-provider-aws/internal/create"
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
-func TestAccCloudWatchEventsTarget_basic(t *testing.T) {
+func TestAccEventBridgeTarget_basic(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	snsTopicResourceName := "aws_sns_topic.test"
 
@@ -39,7 +39,7 @@ func TestAccCloudWatchEventsTarget_basic(t *testing.T) {
 			{
 				Config: testAccTargetConfig(ruleName, snsTopicName1, targetID1),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v1),
+					testAccCheckTargetExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttr(resourceName, "event_bus_name", "default"),
 					resource.TestCheckResourceAttr(resourceName, "target_id", targetID1),
@@ -72,7 +72,7 @@ func TestAccCloudWatchEventsTarget_basic(t *testing.T) {
 			{
 				Config: testAccTargetConfig(ruleName, snsTopicName2, targetID2),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v2),
+					testAccCheckTargetExists(resourceName, &v2),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttr(resourceName, "event_bus_name", "default"),
 					resource.TestCheckResourceAttr(resourceName, "target_id", targetID2),
@@ -87,7 +87,7 @@ func TestAccCloudWatchEventsTarget_basic(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_eventBusName(t *testing.T) {
+func TestAccEventBridgeTarget_eventBusName(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 
 	var v1, v2 events.Target
@@ -107,7 +107,7 @@ func TestAccCloudWatchEventsTarget_eventBusName(t *testing.T) {
 			{
 				Config: testAccTargetEventBusNameConfig(ruleName, busName, snsTopicName1, targetID1),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v1),
+					testAccCheckTargetExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttr(resourceName, "event_bus_name", busName),
 					resource.TestCheckResourceAttr(resourceName, "target_id", targetID1),
@@ -122,7 +122,7 @@ func TestAccCloudWatchEventsTarget_eventBusName(t *testing.T) {
 			{
 				Config: testAccTargetEventBusNameConfig(ruleName, busName, snsTopicName2, targetID2),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v2),
+					testAccCheckTargetExists(resourceName, &v2),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttr(resourceName, "event_bus_name", busName),
 					resource.TestCheckResourceAttr(resourceName, "target_id", targetID2),
@@ -132,10 +132,10 @@ func TestAccCloudWatchEventsTarget_eventBusName(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_eventBusARN(t *testing.T) {
+func TestAccEventBridgeTarget_eventBusARN(t *testing.T) {
 	// "ValidationException: Adding an EventBus as a target within an account is not allowed."
 	if got, want := acctest.Partition(), endpoints.AwsUsGovPartitionID; got == want {
-		t.Skipf("CloudWatch Events Target EventBus ARNs are not supported in %s partition", got)
+		t.Skipf("EventBridge Target EventBus ARNs are not supported in %s partition", got)
 	}
 
 	resourceName := "aws_cloudwatch_event_target.test"
@@ -155,7 +155,7 @@ func TestAccCloudWatchEventsTarget_eventBusARN(t *testing.T) {
 			{
 				Config: testAccTargetEventBusARNConfig(ruleName, originEventBusName, targetID, destinationEventBusName, sdkacctest.RandomWithPrefix("tf-acc-test-target"), sdkacctest.RandomWithPrefix("tf-acc-test-target")),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &target),
+					testAccCheckTargetExists(resourceName, &target),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					acctest.MatchResourceAttrRegionalARN(resourceName, "arn", "events", regexp.MustCompile(fmt.Sprintf("event-bus/%s", destinationEventBusName))),
 					acctest.MatchResourceAttrRegionalARN(resourceName, "event_bus_name", "events", regexp.MustCompile(fmt.Sprintf("event-bus/%s", originEventBusName))),
@@ -172,7 +172,7 @@ func TestAccCloudWatchEventsTarget_eventBusARN(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_generatedTargetID(t *testing.T) {
+func TestAccEventBridgeTarget_generatedTargetID(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	snsTopicResourceName := "aws_sns_topic.test"
 
@@ -189,7 +189,7 @@ func TestAccCloudWatchEventsTarget_generatedTargetID(t *testing.T) {
 			{
 				Config: testAccTargetMissingTargetIDConfig(ruleName, snsTopicName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttrPair(resourceName, "arn", snsTopicResourceName, "arn"),
 					create.TestCheckResourceAttrNameGenerated(resourceName, "target_id"),
@@ -205,7 +205,7 @@ func TestAccCloudWatchEventsTarget_generatedTargetID(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_RetryPolicy_deadLetter(t *testing.T) {
+func TestAccEventBridgeTarget_RetryPolicy_deadLetter(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	kinesisStreamResourceName := "aws_kinesis_stream.test"
 	queueResourceName := "aws_sqs_queue.test"
@@ -224,7 +224,7 @@ func TestAccCloudWatchEventsTarget_RetryPolicy_deadLetter(t *testing.T) {
 			{
 				Config: testAccTargetConfig_retryPolicyDlc(ruleName, targetID, ssmDocumentName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttr(resourceName, "target_id", targetID),
 					resource.TestCheckResourceAttrPair(resourceName, "arn", kinesisStreamResourceName, "arn"),
@@ -239,7 +239,7 @@ func TestAccCloudWatchEventsTarget_RetryPolicy_deadLetter(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_full(t *testing.T) {
+func TestAccEventBridgeTarget_full(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	kinesisStreamResourceName := "aws_kinesis_stream.test"
 	var v events.Target
@@ -257,7 +257,7 @@ func TestAccCloudWatchEventsTarget_full(t *testing.T) {
 			{
 				Config: testAccTargetConfig_full(ruleName, targetID, ssmDocumentName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "rule", ruleName),
 					resource.TestCheckResourceAttr(resourceName, "target_id", targetID),
 					resource.TestCheckResourceAttrPair(resourceName, "arn", kinesisStreamResourceName, "arn"),
@@ -275,7 +275,7 @@ func TestAccCloudWatchEventsTarget_full(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_disappears(t *testing.T) {
+func TestAccEventBridgeTarget_disappears(t *testing.T) {
 	var v events.Target
 
 	ruleName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
@@ -293,8 +293,8 @@ func TestAccCloudWatchEventsTarget_disappears(t *testing.T) {
 			{
 				Config: testAccTargetConfig(ruleName, snsTopicName, targetID),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
-					acctest.CheckResourceDisappears(acctest.Provider, tfcloudwatchevents.ResourceTarget(), resourceName),
+					testAccCheckTargetExists(resourceName, &v),
+					acctest.CheckResourceDisappears(acctest.Provider, tfeventbridge.ResourceTarget(), resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -302,7 +302,7 @@ func TestAccCloudWatchEventsTarget_disappears(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_ssmDocument(t *testing.T) {
+func TestAccEventBridgeTarget_ssmDocument(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	var v events.Target
 	rName := sdkacctest.RandomWithPrefix("tf_ssm_Document")
@@ -316,7 +316,7 @@ func TestAccCloudWatchEventsTarget_ssmDocument(t *testing.T) {
 			{
 				Config: testAccTargetSSMDocumentConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "run_command_targets.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "run_command_targets.0.key", "tag:Name"),
 					resource.TestCheckResourceAttr(resourceName, "run_command_targets.0.values.#", "1"),
@@ -333,7 +333,7 @@ func TestAccCloudWatchEventsTarget_ssmDocument(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_http(t *testing.T) {
+func TestAccEventBridgeTarget_http(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 
 	var v events.Target
@@ -348,7 +348,7 @@ func TestAccCloudWatchEventsTarget_http(t *testing.T) {
 			{
 				Config: testAccTargetHTTPConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "http_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "http_target.0.path_parameter_values.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "http_target.0.header_parameters.%", "1"),
@@ -368,7 +368,7 @@ func TestAccCloudWatchEventsTarget_http(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_ecs(t *testing.T) {
+func TestAccEventBridgeTarget_ecs(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	iamRoleResourceName := "aws_iam_role.test"
 	ecsTaskDefinitionResourceName := "aws_ecs_task_definition.task"
@@ -384,7 +384,7 @@ func TestAccCloudWatchEventsTarget_ecs(t *testing.T) {
 			{
 				Config: testAccTargetECSConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttrPair(resourceName, "role_arn", iamRoleResourceName, "arn"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.task_count", "1"),
@@ -404,7 +404,7 @@ func TestAccCloudWatchEventsTarget_ecs(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_redshift(t *testing.T) {
+func TestAccEventBridgeTarget_redshift(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	iamRoleResourceName := "aws_iam_role.test"
 	var v events.Target
@@ -419,7 +419,7 @@ func TestAccCloudWatchEventsTarget_redshift(t *testing.T) {
 			{
 				Config: testAccTargetRedshiftConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttrPair(resourceName, "role_arn", iamRoleResourceName, "arn"),
 					resource.TestCheckResourceAttr(resourceName, "redshift_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "redshift_target.0.database", "redshiftdb"),
@@ -437,7 +437,7 @@ func TestAccCloudWatchEventsTarget_redshift(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_ecsWithBlankLaunchType(t *testing.T) {
+func TestAccEventBridgeTarget_ecsWithBlankLaunchType(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	iamRoleResourceName := "aws_iam_role.test"
 	ecsTaskDefinitionResourceName := "aws_ecs_task_definition.task"
@@ -453,7 +453,7 @@ func TestAccCloudWatchEventsTarget_ecsWithBlankLaunchType(t *testing.T) {
 			{
 				Config: testAccTargetECSWithBlankLaunchTypeConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttrPair(resourceName, "role_arn", iamRoleResourceName, "arn"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.task_count", "1"),
@@ -472,7 +472,7 @@ func TestAccCloudWatchEventsTarget_ecsWithBlankLaunchType(t *testing.T) {
 			{
 				Config: testAccTargetECSConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.launch_type", "FARGATE"),
 				),
 			},
@@ -485,7 +485,7 @@ func TestAccCloudWatchEventsTarget_ecsWithBlankLaunchType(t *testing.T) {
 			{
 				Config: testAccTargetECSWithBlankLaunchTypeConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.launch_type", ""),
 				),
 			},
@@ -493,7 +493,7 @@ func TestAccCloudWatchEventsTarget_ecsWithBlankLaunchType(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_ecsWithBlankTaskCount(t *testing.T) {
+func TestAccEventBridgeTarget_ecsWithBlankTaskCount(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	var v events.Target
 	rName := sdkacctest.RandomWithPrefix("tf_ecs_target")
@@ -507,7 +507,7 @@ func TestAccCloudWatchEventsTarget_ecsWithBlankTaskCount(t *testing.T) {
 			{
 				Config: testAccTargetECSWithBlankTaskCountConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.task_count", "1"),
 				),
@@ -522,7 +522,7 @@ func TestAccCloudWatchEventsTarget_ecsWithBlankTaskCount(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_ecsFull(t *testing.T) {
+func TestAccEventBridgeTarget_ecsFull(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	var v events.Target
 	rName := sdkacctest.RandomWithPrefix("tf_ecs_target")
@@ -536,7 +536,7 @@ func TestAccCloudWatchEventsTarget_ecsFull(t *testing.T) {
 			{
 				Config: testAccTargetECSWithBlankTaskCountFullConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.task_count", "1"),
 					resource.TestCheckResourceAttr(resourceName, "ecs_target.0.launch_type", "FARGATE"),
@@ -559,7 +559,7 @@ func TestAccCloudWatchEventsTarget_ecsFull(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_batch(t *testing.T) {
+func TestAccEventBridgeTarget_batch(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	batchJobDefinitionResourceName := "aws_batch_job_definition.test"
 	var v events.Target
@@ -574,7 +574,7 @@ func TestAccCloudWatchEventsTarget_batch(t *testing.T) {
 			{
 				Config: testAccTargetBatchConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "batch_target.#", "1"),
 					resource.TestCheckResourceAttrPair(resourceName, "batch_target.0.job_definition", batchJobDefinitionResourceName, "arn"),
 					resource.TestCheckResourceAttr(resourceName, "batch_target.0.job_name", rName),
@@ -590,7 +590,7 @@ func TestAccCloudWatchEventsTarget_batch(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_kinesis(t *testing.T) {
+func TestAccEventBridgeTarget_kinesis(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	var v events.Target
 	rName := sdkacctest.RandomWithPrefix("tf_kinesis_target")
@@ -604,7 +604,7 @@ func TestAccCloudWatchEventsTarget_kinesis(t *testing.T) {
 			{
 				Config: testAccTargetKinesisConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "kinesis_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "kinesis_target.0.partition_key_path", "$.detail"),
 				),
@@ -618,7 +618,7 @@ func TestAccCloudWatchEventsTarget_kinesis(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_sqs(t *testing.T) {
+func TestAccEventBridgeTarget_sqs(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	var v events.Target
 	rName := sdkacctest.RandomWithPrefix("tf_sqs_target")
@@ -632,7 +632,7 @@ func TestAccCloudWatchEventsTarget_sqs(t *testing.T) {
 			{
 				Config: testAccTargetSQSConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "sqs_target.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "sqs_target.0.message_group_id", "event_group"),
 				),
@@ -647,7 +647,7 @@ func TestAccCloudWatchEventsTarget_sqs(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_Input_transformer(t *testing.T) {
+func TestAccEventBridgeTarget_Input_transformer(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_target.test"
 	var v events.Target
 	rName := sdkacctest.RandomWithPrefix("tf_input_transformer")
@@ -687,7 +687,7 @@ func TestAccCloudWatchEventsTarget_Input_transformer(t *testing.T) {
 			{
 				Config: testAccTargetInputTransformerConfig(rName, validInputPaths),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &v),
+					testAccCheckTargetExists(resourceName, &v),
 					resource.TestCheckResourceAttr(resourceName, "input_transformer.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "input_transformer.0.input_paths.%", strconv.Itoa(len(validInputPaths))),
 					resource.TestCheckResourceAttr(resourceName, "input_transformer.0.input_paths.ValidField_99", "$.ValidField_99"),
@@ -704,7 +704,7 @@ func TestAccCloudWatchEventsTarget_Input_transformer(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_inputTransformerJSONString(t *testing.T) {
+func TestAccEventBridgeTarget_inputTransformerJSONString(t *testing.T) {
 	var target events.Target
 	rName := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 
@@ -719,7 +719,7 @@ func TestAccCloudWatchEventsTarget_inputTransformerJSONString(t *testing.T) {
 			{
 				Config: testAccTargetInputTransformerJSONStringConfig(rName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &target),
+					testAccCheckTargetExists(resourceName, &target),
 					resource.TestCheckResourceAttr(resourceName, "input_transformer.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "input_transformer.0.input_paths.%", "2"),
 					resource.TestCheckResourceAttr(resourceName, "input_transformer.0.input_paths.instance", "$.detail.instance"),
@@ -730,7 +730,7 @@ func TestAccCloudWatchEventsTarget_inputTransformerJSONString(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsTarget_partnerEventBus(t *testing.T) {
+func TestAccEventBridgeTarget_partnerEventBus(t *testing.T) {
 	key := "EVENT_BRIDGE_PARTNER_EVENT_BUS_NAME"
 	busName := os.Getenv(key)
 	if busName == "" {
@@ -751,7 +751,7 @@ func TestAccCloudWatchEventsTarget_partnerEventBus(t *testing.T) {
 			{
 				Config: testAccTargetPartnerEventBusConfig(rName, busName),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventTargetExists(resourceName, &target),
+					testAccCheckTargetExists(resourceName, &target),
 					resource.TestCheckResourceAttr(resourceName, "rule", rName),
 					resource.TestCheckResourceAttr(resourceName, "event_bus_name", busName),
 					resource.TestCheckResourceAttr(resourceName, "target_id", rName),
@@ -768,7 +768,7 @@ func TestAccCloudWatchEventsTarget_partnerEventBus(t *testing.T) {
 	})
 }
 
-func testAccCheckCloudWatchEventTargetExists(n string, rule *events.Target) resource.TestCheckFunc {
+func testAccCheckTargetExists(n string, rule *events.Target) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
@@ -776,7 +776,7 @@ func testAccCheckCloudWatchEventTargetExists(n string, rule *events.Target) reso
 		}
 
 		conn := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
-		t, err := tfcloudwatchevents.FindTarget(conn, rs.Primary.Attributes["event_bus_name"], rs.Primary.Attributes["rule"], rs.Primary.Attributes["target_id"])
+		t, err := tfeventbridge.FindTarget(conn, rs.Primary.Attributes["event_bus_name"], rs.Primary.Attributes["rule"], rs.Primary.Attributes["target_id"])
 		if err != nil {
 			return fmt.Errorf("Event Target not found: %w", err)
 		}
@@ -795,9 +795,9 @@ func testAccCheckTargetDestroy(s *terraform.State) error {
 			continue
 		}
 
-		t, err := tfcloudwatchevents.FindTarget(conn, rs.Primary.Attributes["event_bus_name"], rs.Primary.Attributes["rule"], rs.Primary.Attributes["target_id"])
+		t, err := tfeventbridge.FindTarget(conn, rs.Primary.Attributes["event_bus_name"], rs.Primary.Attributes["rule"], rs.Primary.Attributes["target_id"])
 		if err == nil {
-			return fmt.Errorf("CloudWatch Events Target %q still exists: %s",
+			return fmt.Errorf("EventBridge Target %q still exists: %s",
 				rs.Primary.ID, t)
 		}
 	}

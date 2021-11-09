@@ -1,4 +1,4 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"fmt"
@@ -6,18 +6,18 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	events "github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	events "github.com/aws/aws-sdk-go/service/eventbridge"
 	sdkacctest "github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
 const uuidRegex = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 
-func TestAccCloudWatchEventsAPIDestination_basic(t *testing.T) {
+func TestAccEventBridgeAPIDestination_basic(t *testing.T) {
 	var v1, v2, v3 events.DescribeApiDestinationOutput
 	name := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	invocationEndpoint := "https://www.hashicorp.com/"
@@ -42,7 +42,7 @@ func TestAccCloudWatchEventsAPIDestination_basic(t *testing.T) {
 					httpMethod,
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v1),
+					testAccCheckAPIDestinationExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					acctest.MatchResourceAttrRegionalARN(resourceName, "arn", "events", regexp.MustCompile(fmt.Sprintf("api-destination/%s/%s", name, uuidRegex))),
 					resource.TestCheckResourceAttr(resourceName, "http_method", httpMethod),
@@ -61,10 +61,10 @@ func TestAccCloudWatchEventsAPIDestination_basic(t *testing.T) {
 					httpMethodModified,
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v2),
+					testAccCheckAPIDestinationExists(resourceName, &v2),
 					resource.TestCheckResourceAttr(resourceName, "name", nameModified),
 					acctest.MatchResourceAttrRegionalARN(resourceName, "arn", "events", regexp.MustCompile(fmt.Sprintf("api-destination/%s/%s", nameModified, uuidRegex))),
-					testAccCheckCloudWatchEventApiDestinationRecreated(&v1, &v2),
+					testAccCheckAPIDestinationRecreated(&v1, &v2),
 					resource.TestCheckResourceAttr(resourceName, "http_method", httpMethodModified),
 					resource.TestCheckResourceAttr(resourceName, "invocation_endpoint", invocationEndpointModified),
 				),
@@ -76,8 +76,8 @@ func TestAccCloudWatchEventsAPIDestination_basic(t *testing.T) {
 					httpMethodModified,
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v3),
-					testAccCheckCloudWatchEventApiDestinationNotRecreated(&v2, &v3),
+					testAccCheckAPIDestinationExists(resourceName, &v3),
+					testAccCheckAPIDestinationNotRecreated(&v2, &v3),
 					resource.TestCheckResourceAttr(resourceName, "http_method", httpMethodModified),
 					resource.TestCheckResourceAttr(resourceName, "invocation_endpoint", invocationEndpointModified),
 				),
@@ -86,7 +86,7 @@ func TestAccCloudWatchEventsAPIDestination_basic(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsAPIDestination_optional(t *testing.T) {
+func TestAccEventBridgeAPIDestination_optional(t *testing.T) {
 	var v1, v2, v3 events.DescribeApiDestinationOutput
 	name := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	invocationEndpoint := "https://www.hashicorp.com/"
@@ -117,7 +117,7 @@ func TestAccCloudWatchEventsAPIDestination_optional(t *testing.T) {
 					int64(invocationRateLimitPerSecond),
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v1),
+					testAccCheckAPIDestinationExists(resourceName, &v1),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "http_method", httpMethod),
 					resource.TestCheckResourceAttr(resourceName, "invocation_endpoint", invocationEndpoint),
@@ -139,8 +139,8 @@ func TestAccCloudWatchEventsAPIDestination_optional(t *testing.T) {
 					int64(invocationRateLimitPerSecondModified),
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v2),
-					testAccCheckCloudWatchEventApiDestinationRecreated(&v1, &v2),
+					testAccCheckAPIDestinationExists(resourceName, &v2),
+					testAccCheckAPIDestinationRecreated(&v1, &v2),
 					resource.TestCheckResourceAttr(resourceName, "name", nameModified),
 					resource.TestCheckResourceAttr(resourceName, "http_method", httpMethodModified),
 					resource.TestCheckResourceAttr(resourceName, "invocation_endpoint", invocationEndpointModified),
@@ -157,8 +157,8 @@ func TestAccCloudWatchEventsAPIDestination_optional(t *testing.T) {
 					int64(invocationRateLimitPerSecond),
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v3),
-					testAccCheckCloudWatchEventApiDestinationNotRecreated(&v2, &v3),
+					testAccCheckAPIDestinationExists(resourceName, &v3),
+					testAccCheckAPIDestinationNotRecreated(&v2, &v3),
 					resource.TestCheckResourceAttr(resourceName, "name", nameModified),
 					resource.TestCheckResourceAttr(resourceName, "http_method", httpMethodModified),
 					resource.TestCheckResourceAttr(resourceName, "invocation_endpoint", invocationEndpointModified),
@@ -170,7 +170,7 @@ func TestAccCloudWatchEventsAPIDestination_optional(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsAPIDestination_disappears(t *testing.T) {
+func TestAccEventBridgeAPIDestination_disappears(t *testing.T) {
 	var v events.DescribeApiDestinationOutput
 	name := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	invocationEndpoint := "https://www.hashicorp.com/"
@@ -191,8 +191,8 @@ func TestAccCloudWatchEventsAPIDestination_disappears(t *testing.T) {
 					httpMethod,
 				),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventApiDestinationExists(resourceName, &v),
-					acctest.CheckResourceDisappears(acctest.Provider, tfcloudwatchevents.ResourceAPIDestination(), resourceName),
+					testAccCheckAPIDestinationExists(resourceName, &v),
+					acctest.CheckResourceDisappears(acctest.Provider, tfeventbridge.ResourceAPIDestination(), resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -215,14 +215,14 @@ func testAccCheckAPIDestinationDestroy(s *terraform.State) error {
 		resp, err := conn.DescribeApiDestination(&params)
 
 		if err == nil {
-			return fmt.Errorf("CloudWatch Events Api Destination (%s) still exists: %s", rs.Primary.ID, resp)
+			return fmt.Errorf("EventBridge API Destination (%s) still exists: %s", rs.Primary.ID, resp)
 		}
 	}
 
 	return nil
 }
 
-func testAccCheckCloudWatchEventApiDestinationExists(n string, v *events.DescribeApiDestinationOutput) resource.TestCheckFunc {
+func testAccCheckAPIDestinationExists(n string, v *events.DescribeApiDestinationOutput) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 		if !ok {
@@ -238,7 +238,7 @@ func testAccCheckCloudWatchEventApiDestinationExists(n string, v *events.Describ
 			return err
 		}
 		if resp == nil {
-			return fmt.Errorf("CloudWatch Events Api Destination (%s) not found", n)
+			return fmt.Errorf("EventBridge API Destination (%s) not found", n)
 		}
 
 		*v = *resp
@@ -247,19 +247,19 @@ func testAccCheckCloudWatchEventApiDestinationExists(n string, v *events.Describ
 	}
 }
 
-func testAccCheckCloudWatchEventApiDestinationRecreated(i, j *events.DescribeApiDestinationOutput) resource.TestCheckFunc {
+func testAccCheckAPIDestinationRecreated(i, j *events.DescribeApiDestinationOutput) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		if aws.StringValue(i.ApiDestinationArn) == aws.StringValue(j.ApiDestinationArn) {
-			return fmt.Errorf("CloudWatch Events Api Destination not recreated")
+			return fmt.Errorf("EventBridge API Destination not recreated")
 		}
 		return nil
 	}
 }
 
-func testAccCheckCloudWatchEventApiDestinationNotRecreated(i, j *events.DescribeApiDestinationOutput) resource.TestCheckFunc {
+func testAccCheckAPIDestinationNotRecreated(i, j *events.DescribeApiDestinationOutput) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		if aws.StringValue(i.ApiDestinationArn) != aws.StringValue(j.ApiDestinationArn) {
-			return fmt.Errorf("CloudWatch Events Api Destination was recreated")
+			return fmt.Errorf("EventBridge API Destination was recreated")
 		}
 		return nil
 	}

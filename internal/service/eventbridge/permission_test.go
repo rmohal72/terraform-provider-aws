@@ -1,4 +1,4 @@
-package cloudwatchevents_test
+package eventbridge_test
 
 import (
 	"encoding/json"
@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	events "github.com/aws/aws-sdk-go/service/cloudwatchevents"
+	events "github.com/aws/aws-sdk-go/service/eventbridge"
 	"github.com/hashicorp/aws-sdk-go-base/tfawserr"
 	sdkacctest "github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-aws/internal/acctest"
 	"github.com/hashicorp/terraform-provider-aws/internal/conns"
-	tfcloudwatchevents "github.com/hashicorp/terraform-provider-aws/internal/service/cloudwatchevents"
+	tfeventbridge "github.com/hashicorp/terraform-provider-aws/internal/service/eventbridge"
 )
 
-func TestAccCloudWatchEventsPermission_basic(t *testing.T) {
+func TestAccEventBridgePermission_basic(t *testing.T) {
 	principal1 := "111111111111"
 	principal2 := "*"
 	statementID := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
@@ -28,7 +28,7 @@ func TestAccCloudWatchEventsPermission_basic(t *testing.T) {
 		PreCheck:     func() { acctest.PreCheck(t) },
 		ErrorCheck:   acctest.ErrorCheck(t, events.EndpointsID),
 		Providers:    acctest.Providers,
-		CheckDestroy: testAccCheckCloudWatchEventPermissionDestroy,
+		CheckDestroy: testAccCheckPermissionDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccCheckPermissionResourceBasicConfig("", statementID),
@@ -61,18 +61,18 @@ func TestAccCloudWatchEventsPermission_basic(t *testing.T) {
 			{
 				Config: testAccCheckPermissionResourceBasicConfig(principal1, statementID),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
+					testAccCheckPermissionExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "action", "events:PutEvents"),
 					resource.TestCheckResourceAttr(resourceName, "condition.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "principal", principal1),
 					resource.TestCheckResourceAttr(resourceName, "statement_id", statementID),
-					resource.TestCheckResourceAttr(resourceName, "event_bus_name", tfcloudwatchevents.DefaultEventBusName),
+					resource.TestCheckResourceAttr(resourceName, "event_bus_name", tfeventbridge.DefaultEventBusName),
 				),
 			},
 			{
 				Config: testAccCheckPermissionResourceBasicConfig(principal2, statementID),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
+					testAccCheckPermissionExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "principal", principal2),
 				),
 			},
@@ -89,7 +89,7 @@ func TestAccCloudWatchEventsPermission_basic(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsPermission_eventBusName(t *testing.T) {
+func TestAccEventBridgePermission_eventBusName(t *testing.T) {
 	principal1 := "111111111111"
 	statementID := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	busName := sdkacctest.RandomWithPrefix("tf-acc-test-bus")
@@ -100,12 +100,12 @@ func TestAccCloudWatchEventsPermission_eventBusName(t *testing.T) {
 		PreCheck:     func() { acctest.PreCheck(t) },
 		ErrorCheck:   acctest.ErrorCheck(t, events.EndpointsID),
 		Providers:    acctest.Providers,
-		CheckDestroy: testAccCheckCloudWatchEventPermissionDestroy,
+		CheckDestroy: testAccCheckPermissionDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCheckPermissionResourceEventBusNameConfig(principal1, busName, statementID),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
+					testAccCheckPermissionExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "action", "events:PutEvents"),
 					resource.TestCheckResourceAttr(resourceName, "condition.#", "0"),
 					resource.TestCheckResourceAttr(resourceName, "principal", principal1),
@@ -122,7 +122,7 @@ func TestAccCloudWatchEventsPermission_eventBusName(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsPermission_action(t *testing.T) {
+func TestAccEventBridgePermission_action(t *testing.T) {
 	principal := "111111111111"
 	statementID := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_cloudwatch_event_permission.test"
@@ -131,7 +131,7 @@ func TestAccCloudWatchEventsPermission_action(t *testing.T) {
 		PreCheck:     func() { acctest.PreCheck(t) },
 		ErrorCheck:   acctest.ErrorCheck(t, events.EndpointsID),
 		Providers:    acctest.Providers,
-		CheckDestroy: testAccCheckCloudWatchEventPermissionDestroy,
+		CheckDestroy: testAccCheckPermissionDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config:      testAccCheckPermissionResourceActionConfig("", principal, statementID),
@@ -152,7 +152,7 @@ func TestAccCloudWatchEventsPermission_action(t *testing.T) {
 			{
 				Config: testAccCheckPermissionResourceActionConfig("events:PutEvents", principal, statementID),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
+					testAccCheckPermissionExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "action", "events:PutEvents"),
 				),
 			},
@@ -165,7 +165,7 @@ func TestAccCloudWatchEventsPermission_action(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsPermission_condition(t *testing.T) {
+func TestAccEventBridgePermission_condition(t *testing.T) {
 	statementID := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
 	resourceName := "aws_cloudwatch_event_permission.test"
 
@@ -173,12 +173,12 @@ func TestAccCloudWatchEventsPermission_condition(t *testing.T) {
 		PreCheck:     func() { acctest.PreCheck(t) },
 		ErrorCheck:   acctest.ErrorCheck(t, events.EndpointsID),
 		Providers:    acctest.Providers,
-		CheckDestroy: testAccCheckCloudWatchEventPermissionDestroy,
+		CheckDestroy: testAccCheckPermissionDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCheckPermissionResourceConditionOrganizationConfig(statementID, "o-1234567890"),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
+					testAccCheckPermissionExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "condition.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "condition.0.key", "aws:PrincipalOrgID"),
 					resource.TestCheckResourceAttr(resourceName, "condition.0.type", "StringEquals"),
@@ -188,7 +188,7 @@ func TestAccCloudWatchEventsPermission_condition(t *testing.T) {
 			{
 				Config: testAccCheckPermissionResourceConditionOrganizationConfig(statementID, "o-0123456789"),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
+					testAccCheckPermissionExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "condition.#", "1"),
 					resource.TestCheckResourceAttr(resourceName, "condition.0.key", "aws:PrincipalOrgID"),
 					resource.TestCheckResourceAttr(resourceName, "condition.0.type", "StringEquals"),
@@ -204,7 +204,7 @@ func TestAccCloudWatchEventsPermission_condition(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsPermission_multiple(t *testing.T) {
+func TestAccEventBridgePermission_multiple(t *testing.T) {
 	principal1 := "111111111111"
 	principal2 := "222222222222"
 	statementID1 := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
@@ -216,12 +216,12 @@ func TestAccCloudWatchEventsPermission_multiple(t *testing.T) {
 		PreCheck:     func() { acctest.PreCheck(t) },
 		ErrorCheck:   acctest.ErrorCheck(t, events.EndpointsID),
 		Providers:    acctest.Providers,
-		CheckDestroy: testAccCheckCloudWatchEventPermissionDestroy,
+		CheckDestroy: testAccCheckPermissionDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCheckPermissionResourceBasicConfig(principal1, statementID1),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName1),
+					testAccCheckPermissionExists(resourceName1),
 					resource.TestCheckResourceAttr(resourceName1, "principal", principal1),
 					resource.TestCheckResourceAttr(resourceName1, "statement_id", statementID1),
 				),
@@ -229,8 +229,8 @@ func TestAccCloudWatchEventsPermission_multiple(t *testing.T) {
 			{
 				Config: testAccCheckPermissionResourceMultipleConfig(principal1, statementID1, principal2, statementID2),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName1),
-					testAccCheckCloudWatchEventPermissionExists(resourceName2),
+					testAccCheckPermissionExists(resourceName1),
+					testAccCheckPermissionExists(resourceName2),
 					resource.TestCheckResourceAttr(resourceName1, "principal", principal1),
 					resource.TestCheckResourceAttr(resourceName1, "statement_id", statementID1),
 					resource.TestCheckResourceAttr(resourceName2, "principal", principal2),
@@ -241,7 +241,7 @@ func TestAccCloudWatchEventsPermission_multiple(t *testing.T) {
 	})
 }
 
-func TestAccCloudWatchEventsPermission_disappears(t *testing.T) {
+func TestAccEventBridgePermission_disappears(t *testing.T) {
 	resourceName := "aws_cloudwatch_event_permission.test"
 	principal := "111111111111"
 	statementID := sdkacctest.RandomWithPrefix(acctest.ResourcePrefix)
@@ -250,13 +250,13 @@ func TestAccCloudWatchEventsPermission_disappears(t *testing.T) {
 		PreCheck:     func() { acctest.PreCheck(t) },
 		ErrorCheck:   acctest.ErrorCheck(t, events.EndpointsID),
 		Providers:    acctest.Providers,
-		CheckDestroy: testAccCheckCloudWatchEventPermissionDestroy,
+		CheckDestroy: testAccCheckPermissionDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCheckPermissionResourceBasicConfig(principal, statementID),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckCloudWatchEventPermissionExists(resourceName),
-					acctest.CheckResourceDisappears(acctest.Provider, tfcloudwatchevents.ResourcePermission(), resourceName),
+					testAccCheckPermissionExists(resourceName),
+					acctest.CheckResourceDisappears(acctest.Provider, tfeventbridge.ResourcePermission(), resourceName),
 				),
 				ExpectNonEmptyPlan: true,
 			},
@@ -264,7 +264,7 @@ func TestAccCloudWatchEventsPermission_disappears(t *testing.T) {
 	})
 }
 
-func testAccCheckCloudWatchEventPermissionExists(pr string) resource.TestCheckFunc {
+func testAccCheckPermissionExists(pr string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		conn := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
 		rs, ok := s.RootModule().Resources[pr]
@@ -276,34 +276,34 @@ func testAccCheckCloudWatchEventPermissionExists(pr string) resource.TestCheckFu
 			return fmt.Errorf("No ID is set")
 		}
 
-		eventBusName, statementID, err := tfcloudwatchevents.PermissionParseResourceID(rs.Primary.ID)
+		eventBusName, statementID, err := tfeventbridge.PermissionParseResourceID(rs.Primary.ID)
 		if err != nil {
-			return fmt.Errorf("error reading CloudWatch Events permission (%s): %w", pr, err)
+			return fmt.Errorf("error reading EventBridge permission (%s): %w", pr, err)
 		}
 		input := &events.DescribeEventBusInput{
 			Name: aws.String(eventBusName),
 		}
 		debo, err := conn.DescribeEventBus(input)
 		if err != nil {
-			return fmt.Errorf("Reading CloudWatch Events bus policy for '%s' failed: %w", pr, err)
+			return fmt.Errorf("Reading EventBridge bus policy for '%s' failed: %w", pr, err)
 		}
 
 		if debo.Policy == nil {
 			return fmt.Errorf("Not found: %s", pr)
 		}
 
-		var policyDoc tfcloudwatchevents.PermissionPolicyDoc
+		var policyDoc tfeventbridge.PermissionPolicyDoc
 		err = json.Unmarshal([]byte(*debo.Policy), &policyDoc)
 		if err != nil {
-			return fmt.Errorf("Reading CloudWatch Events bus policy for '%s' failed: %w", pr, err)
+			return fmt.Errorf("Reading EventBridge bus policy for '%s' failed: %w", pr, err)
 		}
 
-		_, err = tfcloudwatchevents.FindPermissionPolicyStatementByID(&policyDoc, statementID)
+		_, err = tfeventbridge.FindPermissionPolicyStatementByID(&policyDoc, statementID)
 		return err
 	}
 }
 
-func testAccCheckCloudWatchEventPermissionDestroy(s *terraform.State) error {
+func testAccCheckPermissionDestroy(s *terraform.State) error {
 	conn := acctest.Provider.Meta().(*conns.AWSClient).EventBridgeConn
 
 	for _, rs := range s.RootModule().Resources {
@@ -311,9 +311,9 @@ func testAccCheckCloudWatchEventPermissionDestroy(s *terraform.State) error {
 			continue
 		}
 
-		eventBusName, statementID, err := tfcloudwatchevents.PermissionParseResourceID(rs.Primary.ID)
+		eventBusName, statementID, err := tfeventbridge.PermissionParseResourceID(rs.Primary.ID)
 		if err != nil {
-			return fmt.Errorf("error reading CloudWatch Events permission (%s): %w", rs.Primary.ID, err)
+			return fmt.Errorf("error reading EventBridge permission (%s): %w", rs.Primary.ID, err)
 		}
 		input := &events.DescribeEventBusInput{
 			Name: aws.String(eventBusName),
@@ -330,15 +330,15 @@ func testAccCheckCloudWatchEventPermissionDestroy(s *terraform.State) error {
 				return nil
 			}
 
-			var policyDoc tfcloudwatchevents.PermissionPolicyDoc
+			var policyDoc tfeventbridge.PermissionPolicyDoc
 			err = json.Unmarshal([]byte(*debo.Policy), &policyDoc)
 			if err != nil {
-				return resource.NonRetryableError(fmt.Errorf("Reading CloudWatch Events permission '%s' failed: %w", rs.Primary.ID, err))
+				return resource.NonRetryableError(fmt.Errorf("Reading EventBridge permission '%s' failed: %w", rs.Primary.ID, err))
 			}
 
-			_, err = tfcloudwatchevents.FindPermissionPolicyStatementByID(&policyDoc, statementID)
+			_, err = tfeventbridge.FindPermissionPolicyStatementByID(&policyDoc, statementID)
 			if err == nil {
-				return resource.RetryableError(fmt.Errorf("CloudWatch Events permission exists: %s", rs.Primary.ID))
+				return resource.RetryableError(fmt.Errorf("EventBridge permission exists: %s", rs.Primary.ID))
 			}
 
 			return nil

@@ -108,7 +108,6 @@ provider "aws" {
   <li><code>cloudsearchdomain</code></li>
   <li><code>cloudtrail</code></li>
   <li><code>cloudwatch</code></li>
-  <li><code>cloudwatchevents</code></li>
   <li><code>cloudwatchlogs</code></li>
   <li><code>codeartifact</code></li>
   <li><code>codebuild</code></li>
@@ -155,12 +154,13 @@ provider "aws" {
   <li><code>elasticache</code></li>
   <li><code>elasticbeanstalk</code></li>
   <li><code>elasticinference</code></li>
-  <li><code>es</code> (or <code>elasticsearch</code>, <code>elasticsearchservice</code>)</li>
   <li><code>elastictranscoder</code></li>
   <li><code>elb</code></li>
   <li><code>elbv2</code></li>
   <li><code>emr</code></li>
   <li><code>emrcontainers</code></li>
+  <li><code>es</code> (or <code>elasticsearch</code>, <code>elasticsearchservice</code>)</li>
+  <li><code>eventbridge</code> (or <code>events</code>, <code>cloudwatchevents</code>)</li>
   <li><code>finspace</code></li>
   <li><code>finspacedata</code></li>
   <li><code>firehose</code></li>
