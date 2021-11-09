@@ -1,4 +1,4 @@
-package cloudwatchevents
+package eventbridge
 
 import (
 	"github.com/aws/aws-sdk-go/aws"

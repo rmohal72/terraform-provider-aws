@@ -28,7 +28,7 @@ For example, in the file `internal/service/cloudwatchevents/generate.go`
 ```go
 //go:generate go run -tags generate ../../generate/listpages/main.go -ListOps=ListEventBuses,ListRules,ListTargetsByRule
 
-package cloudwatchevents
+package eventbridge
 ```
 
 generates the file `internal/service/cloudwatchevents/list_pages_gen.go` with the functions `listEventBusesPages`, `listRulesPages`, and `listTargetsByRulePages` as well as their `...WithContext` equivalents.

@@ -1,7 +1,7 @@
 //go:build sweep
 // +build sweep
 
-package cloudwatchevents
+package eventbridge
 
 import (
 	"encoding/json"
