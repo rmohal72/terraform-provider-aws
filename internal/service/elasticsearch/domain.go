@@ -692,6 +692,25 @@ func resourceDomainCreate(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[DEBUG] Waiting for Elasticsearch domain %q to be created", d.Id())
 	err = WaitForDomainCreation(conn, d.Get("domain_name").(string), d.Id())
 	if err != nil {
+		var out *elasticsearch.UpdateElasticsearchDomainConfigOutput
+
+		err = resource.Retry(tfiam.PropagationTimeout, func() *resource.RetryError {
+
+			in := &elasticsearch.UpdateElasticsearchDomainConfigInput{
+				DomainName:      aws.String(d.Get("domain_name").(string)),
+				AutoTuneOptions: input.AutoTuneOptions,
+			}
+
+			var err error
+			out, err = conn.UpdateElasticsearchDomainConfig(in)
+
+			if err != nil {
+				return resource.NonRetryableError(err)
+			}
+
+			return nil
+		})
+
 		return err
 	}
 
